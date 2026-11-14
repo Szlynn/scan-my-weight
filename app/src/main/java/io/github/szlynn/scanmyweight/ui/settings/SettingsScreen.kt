@@ -53,7 +53,13 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory(repository))
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var urlDraft by rememberSaveable(uiState.webhookUrl) { mutableStateOf(uiState.webhookUrl) }
+    var urlDraft by rememberSaveable { mutableStateOf("") }
+    var hasBeenSeeded by rememberSaveable { mutableStateOf(false) }
+
+    if (!hasBeenSeeded && !uiState.isLoading && !uiState.loadError) {
+        urlDraft = uiState.webhookUrl
+        hasBeenSeeded = true
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val keyboardController = LocalSoftwareKeyboardController.current
     val savedMessage = stringResource(R.string.settings_saved)
