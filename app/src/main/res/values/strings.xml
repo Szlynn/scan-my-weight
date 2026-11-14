@@ -14,6 +14,7 @@
     <string name="settings_webhook_url_placeholder">https://script.google.com/macros/s/…/exec</string>
     <string name="settings_save_button">Mentés</string>
     <string name="settings_saved">Beállítások elmentve</string>
+    <string name="settings_save_error">A mentés nem sikerült. Próbáld újra.</string>
     <string name="settings_load_error">A beállítások betöltése nem sikerült.</string>
     <string name="settings_retry_button">Újrapróbálás</string>
 </resources>

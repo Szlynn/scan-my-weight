@@ -4,19 +4,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.szlynn.scanmyweight.data.SettingsRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 data class SettingsUiState(
     val webhookUrl: String = "",
     val isLoading: Boolean = true,
     val loadError: Boolean = false,
+    val isSaveError: Boolean = false,
     val isSaved: Boolean = false,
 )
 
@@ -28,8 +32,10 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
 
     // Incrementing this triggers a fresh subscription to the repository flow.
     private val retryTrigger = MutableStateFlow(0)
+    private val saveErrorState = MutableStateFlow(false)
+    private val savedState = MutableStateFlow(false)
 
-    val uiState: StateFlow<SettingsUiState> = retryTrigger
+    private val loadState = retryTrigger
         .flatMapLatest {
             repository.webhookUrl
                 .map { result ->
@@ -40,19 +46,39 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
                 }
                 .catch { emit(SettingsUiState(isLoading = false, loadError = true)) }
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = SettingsUiState(),
-        )
+
+    val uiState: StateFlow<SettingsUiState> = combine(
+        loadState,
+        saveErrorState,
+        savedState,
+    ) { load, isSaveError, isSaved ->
+        load.copy(isSaveError = isSaveError, isSaved = isSaved)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = SettingsUiState(),
+    )
 
     fun retryLoad() {
         retryTrigger.value++
     }
 
+    fun clearSaveError() {
+        saveErrorState.value = false
+    }
+
     fun saveWebhookUrl(url: String) {
         viewModelScope.launch {
-            repository.saveWebhookUrl(url.trim())
+            saveErrorState.value = false
+            savedState.value = false
+            try {
+                repository.saveWebhookUrl(url.trim())
+                savedState.value = true
+            } catch (e: IOException) {
+                saveErrorState.value = true
+            } catch (e: CancellationException) {
+                throw e
+            }
         }
     }
 

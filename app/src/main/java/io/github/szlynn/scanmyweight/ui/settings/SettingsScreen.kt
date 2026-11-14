@@ -63,9 +63,17 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val keyboardController = LocalSoftwareKeyboardController.current
     val savedMessage = stringResource(R.string.settings_saved)
+    val saveErrorMessage = stringResource(R.string.settings_save_error)
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) snackbarHostState.showSnackbar(savedMessage)
+    }
+
+    LaunchedEffect(uiState.isSaveError) {
+        if (uiState.isSaveError) {
+            snackbarHostState.showSnackbar(saveErrorMessage)
+            viewModel.clearSaveError()
+        }
     }
 
     Scaffold(
