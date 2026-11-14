@@ -26,6 +26,14 @@ class ScanStateMachineTest {
     // region Lock-in behaviour
 
     @Test
+    fun `locks metric on first observation when threshold is one`() {
+        val machine = ScanStateMachine(requiredConsecutiveFrames = 1)
+        machine.process(OcrParser.ParseResult(weightKg = 60.6))
+        assertEquals(60.6, machine.state.weight.lockedValue)
+        assertTrue(machine.state.weight.isLocked)
+    }
+
+    @Test
     fun `metric locks in after required consecutive frames`() {
         repeat(3) { machine.process(frameWeight(60.6)) }
         assertEquals(60.6, machine.state.weight.lockedValue)

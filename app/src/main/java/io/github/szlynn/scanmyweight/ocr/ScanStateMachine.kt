@@ -87,8 +87,13 @@ class ScanStateMachine(val requiredConsecutiveFrames: Int = 5) {
                 current.copy(consecutiveCount = newCount)
             }
         } else {
-            // New candidate — start streak from 1.
-            current.copy(candidate = observed, consecutiveCount = 1)
+            // New candidate — start streak from 1 and check threshold immediately
+            // so that requiredConsecutiveFrames = 1 locks on the first observation.
+            if (requiredConsecutiveFrames <= 1) {
+                current.copy(lockedValue = observed, candidate = null, consecutiveCount = 0)
+            } else {
+                current.copy(candidate = observed, consecutiveCount = 1)
+            }
         }
     }
 }
