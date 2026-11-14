@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">Scan My Weight</string>
+
+    <!-- Navigation -->
+    <string name="navigate_back">Vissza</string>
+    <string name="navigate_to_settings">Beállítások</string>
+
+    <!-- Scan screen -->
+    <string name="scan_placeholder">Szkennelés (hamarosan)</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Beállítások</string>
+    <string name="settings_webhook_url_label">Webhook URL</string>
+    <string name="settings_webhook_url_placeholder">https://script.google.com/macros/s/…/exec</string>
+    <string name="settings_save_button">Mentés</string>
+    <string name="settings_saved">Beállítások elmentve</string>
 </resources>
