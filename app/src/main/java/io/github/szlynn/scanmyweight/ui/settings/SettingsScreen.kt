@@ -1,5 +1,7 @@
 package io.github.szlynn.scanmyweight.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,9 +13,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -27,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -53,7 +58,6 @@ fun SettingsScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val savedMessage = stringResource(R.string.settings_saved)
 
-    // Show snackbar when isSaved flips true — reserved for future use
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) snackbarHostState.showSnackbar(savedMessage)
     }
@@ -75,41 +79,77 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 24.dp),
-        ) {
-            OutlinedTextField(
-                value = urlDraft,
-                onValueChange = { urlDraft = it },
-                label = { Text(stringResource(R.string.settings_webhook_url_label)) },
-                placeholder = { Text(stringResource(R.string.settings_webhook_url_placeholder)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Uri,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        keyboardController?.hide()
-                        viewModel.saveWebhookUrl(urlDraft)
-                    },
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
+        when {
+            uiState.isLoading -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            uiState.loadError -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_load_error),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = viewModel::retryLoad) {
+                        Text(stringResource(R.string.settings_retry_button))
+                    }
+                }
+            }
 
-            Button(
-                onClick = {
-                    keyboardController?.hide()
-                    viewModel.saveWebhookUrl(urlDraft)
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.settings_save_button))
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 16.dp, vertical = 24.dp),
+                ) {
+                    OutlinedTextField(
+                        value = urlDraft,
+                        onValueChange = { urlDraft = it },
+                        label = { Text(stringResource(R.string.settings_webhook_url_label)) },
+                        placeholder = { Text(stringResource(R.string.settings_webhook_url_placeholder)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                keyboardController?.hide()
+                                viewModel.saveWebhookUrl(urlDraft)
+                            },
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            keyboardController?.hide()
+                            viewModel.saveWebhookUrl(urlDraft)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_save_button))
+                    }
+                }
             }
         }
     }
