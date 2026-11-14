@@ -59,6 +59,13 @@ class OcrParserTest {
     }
 
     @Test
+    fun `rejects suffix match from double-comma token`() {
+        // "60,6,6 kg" partially normalises to "60.6,6 kg" — trailing ",6" must not match
+        val result = OcrParser.parse("60,6,6 kg")
+        assertNull(result.weightKg)
+    }
+
+    @Test
     fun `rejects partial digit suffix match`() {
         // "1606 kg" should not match as "60.6" or "606" mid-token
         val result = OcrParser.parse("1606 kg")

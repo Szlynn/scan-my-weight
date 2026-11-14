@@ -41,10 +41,11 @@ object OcrParser {
 
     /**
      * A valid decimal number token: one or more digits with at most one decimal point.
-     * Negative lookbehind and lookahead prevent matching a suffix or prefix of a longer
-     * unsupported token (e.g. "60,6" after comma normalisation, or "60.6.6").
+     * Negative lookbehind and lookahead include digit, point, and comma so a match cannot
+     * start at the trailing digits of a token preceded by a digit and comma (e.g. "60,6,6"
+     * partially normalised to "60.6,6") or a double-decimal token (e.g. "60.6.6").
      */
-    private val NUMBER_PATTERN = """(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])"""
+    private val NUMBER_PATTERN = """(?<![\d.,])(\d+(?:\.\d+)?)(?![\d.,])"""
 
     private val weightRegex = Regex("""$NUMBER_PATTERN\s*kg""", RegexOption.IGNORE_CASE)
     private val bfRegex = Regex("""BF\s*$NUMBER_PATTERN\s*%""", RegexOption.IGNORE_CASE)
