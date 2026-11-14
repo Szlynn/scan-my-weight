@@ -34,19 +34,22 @@ object OcrParser {
         .replace('I', '1')
         .replace('S', '5')
         .replace('s', '5')
+        // Normalise European decimal comma to point: "60,6" → "60.6"
+        .replace(Regex("""(\d),(\d)"""), "$1.$2")
         // Collapse whitespace around a decimal point: "60 . 6" → "60.6"
         .replace(Regex("""\s*\.\s*"""), ".")
 
     /**
-     * Regex for a decimal number: one or more digits, optional decimal part.
-     * Accepts values like "60.6", "606", "35.6".
+     * A valid decimal number token: one or more digits with at most one decimal point.
+     * Negative lookbehind and lookahead prevent matching a suffix or prefix of a longer
+     * unsupported token (e.g. "60,6" after comma normalisation, or "60.6.6").
      */
-    private val NUMBER = """(\d+(?:\.\d+)?)"""
+    private val NUMBER_PATTERN = """(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])"""
 
-    private val weightRegex = Regex("""$NUMBER\s*kg""", RegexOption.IGNORE_CASE)
-    private val bfRegex = Regex("""BF\s*$NUMBER\s*%""", RegexOption.IGNORE_CASE)
-    private val bwRegex = Regex("""BW\s*$NUMBER\s*%""", RegexOption.IGNORE_CASE)
-    private val bmRegex = Regex("""BM\s*$NUMBER\s*%""", RegexOption.IGNORE_CASE)
+    private val weightRegex = Regex("""$NUMBER_PATTERN\s*kg""", RegexOption.IGNORE_CASE)
+    private val bfRegex = Regex("""BF\s*$NUMBER_PATTERN\s*%""", RegexOption.IGNORE_CASE)
+    private val bwRegex = Regex("""BW\s*$NUMBER_PATTERN\s*%""", RegexOption.IGNORE_CASE)
+    private val bmRegex = Regex("""BM\s*$NUMBER_PATTERN\s*%""", RegexOption.IGNORE_CASE)
 
     /**
      * Parses [rawText] (the full concatenated text from one ML Kit frame) and returns

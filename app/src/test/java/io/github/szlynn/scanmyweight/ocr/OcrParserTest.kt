@@ -44,6 +44,27 @@ class OcrParserTest {
         assertNull(result.weightKg)
     }
 
+    @Test
+    fun `rejects suffix match from comma-separated token`() {
+        // "60,6 kg" after comma normalisation becomes "60.6 kg" — valid, should parse
+        val result = OcrParser.parse("60,6 kg")
+        assertEquals(60.6, result.weightKg)
+    }
+
+    @Test
+    fun `rejects suffix match from double-decimal token`() {
+        // "60.6.6 kg" is not a valid number — must not match "6.6 kg" or "60.6 kg"
+        val result = OcrParser.parse("60.6.6 kg")
+        assertNull(result.weightKg)
+    }
+
+    @Test
+    fun `rejects partial digit suffix match`() {
+        // "1606 kg" should not match as "60.6" or "606" mid-token
+        val result = OcrParser.parse("1606 kg")
+        assertEquals(1606.0, result.weightKg)
+    }
+
     // endregion
 
     // region BF parsing
