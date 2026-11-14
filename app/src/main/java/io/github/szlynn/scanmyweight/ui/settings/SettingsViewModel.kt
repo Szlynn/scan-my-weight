@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.szlynn.scanmyweight.data.SettingsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     private val retryTrigger = MutableStateFlow(0)
     private val saveErrorState = MutableStateFlow(false)
     private val savedState = MutableStateFlow(false)
+    private var saveJob: Job? = null
 
     private val loadState = retryTrigger
         .flatMapLatest {
@@ -70,7 +72,8 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     }
 
     fun saveWebhookUrl(url: String) {
-        viewModelScope.launch {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
             saveErrorState.value = false
             savedState.value = false
             try {
