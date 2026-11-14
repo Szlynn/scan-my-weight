@@ -6,17 +6,23 @@ import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.io.Closeable
 
 /**
  * CameraX [ImageAnalysis.Analyzer] that runs ML Kit on-device text recognition on each frame
  * and delivers a [OcrParser.ParseResult] to [onResult].
  *
- * Frames are processed on the executor provided by CameraX. [onResult] is called on that
- * same thread — the caller is responsible for switching to the main thread if needed.
+ * Frames are submitted to ML Kit on the CameraX executor thread. [onResult] is invoked on the
+ * main application thread, because ML Kit task listeners with no explicit executor default to
+ * the main thread.
+ *
+ * Call [close] when the analyzer is no longer needed (e.g. when the scan session ends or the
+ * analyzer is replaced) to release the underlying [com.google.mlkit.vision.text.TextRecognizer].
+ * [ImageProxy.close] is called separately inside [analyze] and does not affect the recognizer.
  */
 class MlKitTextAnalyzer(
     private val onResult: (OcrParser.ParseResult) -> Unit,
-) : ImageAnalysis.Analyzer {
+) : ImageAnalysis.Analyzer, Closeable {
 
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
@@ -43,5 +49,13 @@ class MlKitTextAnalyzer(
             .addOnCompleteListener {
                 imageProxy.close()
             }
+    }
+
+    /**
+     * Releases the [com.google.mlkit.vision.text.TextRecognizer].
+     * Call this when the scan session ends or this analyzer is replaced.
+     */
+    override fun close() {
+        recognizer.close()
     }
 }
