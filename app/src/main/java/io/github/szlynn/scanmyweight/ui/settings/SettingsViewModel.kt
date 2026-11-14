@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.github.szlynn.scanmyweight.data.SettingsRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,7 @@ sealed interface SettingsEvent {
     data object SaveRequested : SettingsEvent
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModel(private val repository: SettingsRepository) : ViewModel() {
 
     // Incrementing this triggers a fresh subscription to the repository flow.
