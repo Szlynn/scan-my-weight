@@ -1,6 +1,9 @@
 package io.github.szlynn.scanmyweight.ui.scan
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -30,14 +33,24 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.szlynn.scanmyweight.R
 import io.github.szlynn.scanmyweight.data.SheetsRepository
@@ -49,17 +62,44 @@ fun ScanScreen(
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // ScanViewModel owns the MlKitTextAnalyzer and closes it in onCleared.
+    // CameraPreview receives the analyzer as a reference — it must not close it.
     val viewModel: ScanViewModel = viewModel(factory = ScanViewModel.Factory(sheetsRepository))
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Track whether the user has permanently denied the permission so we can offer
+    // the app settings path instead of repeating a blocked request.
+    var permissionPermanentlyDenied by rememberSaveable { mutableStateOf(false) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = viewModel::onCameraPermissionResult,
+        onResult = { granted ->
+            if (granted) {
+                permissionPermanentlyDenied = false
+            } else {
+                // If the system no longer shows the rationale, the permission is permanently denied.
+                permissionPermanentlyDenied = true
+            }
+            viewModel.onCameraPermissionResult(granted)
+        },
     )
 
     LaunchedEffect(Unit) {
         permissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    // Refresh permission state when the app returns from system settings.
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val granted = context.checkSelfPermission(Manifest.permission.CAMERA) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            viewModel.onCameraPermissionResult(granted)
+            if (granted) permissionPermanentlyDenied = false
+        }
     }
 
     LaunchedEffect(uiState.cameraError) {
@@ -89,6 +129,8 @@ fun ScanScreen(
                 .padding(innerPadding),
         ) {
             if (uiState.hasCameraPermission) {
+                // CameraPreview holds a reference to the analyzer but does not own or close it.
+                // The ViewModel owns the analyzer and closes it in onCleared.
                 CameraPreview(
                     imageAnalyzer = viewModel.analyzer,
                     onError = viewModel::onCameraError,
@@ -97,7 +139,15 @@ fun ScanScreen(
                 RoiOverlay(modifier = Modifier.fillMaxSize())
             } else {
                 NoCameraPermissionContent(
+                    permanentlyDenied = permissionPermanentlyDenied,
                     onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    onOpenAppSettings = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            },
+                        )
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -152,9 +202,16 @@ private fun MetricIndicator(
     modifier: Modifier = Modifier,
 ) {
     val color = if (state == MetricCaptureState.LOCKED) Color(0xFF4CAF50) else Color.Gray
+    val stateDesc = stringResource(
+        if (state == MetricCaptureState.LOCKED) R.string.metric_state_locked
+        else R.string.metric_state_waiting,
+    )
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier,
+        modifier = modifier.semantics {
+            contentDescription = label
+            stateDescription = stateDesc
+        },
     ) {
         Box(
             modifier = Modifier
@@ -172,7 +229,9 @@ private fun MetricIndicator(
 
 @Composable
 private fun NoCameraPermissionContent(
+    permanentlyDenied: Boolean,
     onRequestPermission: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -181,13 +240,22 @@ private fun NoCameraPermissionContent(
         modifier = modifier.padding(32.dp),
     ) {
         Text(
-            text = stringResource(R.string.scan_camera_permission_rationale),
+            text = stringResource(
+                if (permanentlyDenied) R.string.scan_camera_permission_denied
+                else R.string.scan_camera_permission_rationale,
+            ),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRequestPermission) {
-            Text(stringResource(R.string.scan_grant_permission_button))
+        if (permanentlyDenied) {
+            Button(onClick = onOpenAppSettings) {
+                Text(stringResource(R.string.scan_open_app_settings_button))
+            }
+        } else {
+            Button(onClick = onRequestPermission) {
+                Text(stringResource(R.string.scan_grant_permission_button))
+            }
         }
     }
 }
