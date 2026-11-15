@@ -11,8 +11,11 @@
     <string name="metric_bw">BW</string>
     <string name="metric_bm">BM</string>
 
+    <string name="metric_waiting">Várakozás</string>
+    <string name="metric_locked">Rögzítve</string>
+
     <!-- Scan screen – states -->
-    <string name="scan_complete">Sikeres leolvasás! Feltöltés folyamatban…</string>
+    <string name="scan_complete">Sikeres leolvasás és feltöltés!</string>
     <string name="scan_upload_error">Feltöltés sikertelen</string>
     <string name="scan_retry_upload_button">Újrapróbálás</string>
     <string name="scan_reset_button">Új mérés</string>
@@ -20,6 +23,8 @@
     <!-- Scan screen – permission -->
     <string name="scan_camera_permission_rationale">Az alkalmazásnak kameraengedélyre van szüksége a mérleg leolvasásához.</string>
     <string name="scan_grant_permission_button">Engedély megadása</string>
+
+    <string name="scan_open_settings_button">Alkalmazásbeállítások megnyitása</string>
 
     <!-- Settings screen -->
     <string name="settings_title">Beállítások</string>

@@ -22,9 +22,9 @@ class SheetsRepository(private val settingsRepository: SettingsRepository) {
      *
      * Reads the webhook URL from [SettingsRepository] at call time.
      * Returns [Result.failure] with [IOException] if the URL is blank, on network failure,
-     * or if the server returns an error status.
+     * or if the server returns an error status. Malformed URLs also return a failure.
      */
-    suspend fun upload(measurement: WeightMeasurement): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun upload(measurement: WeightMeasurement, measurementId: String): Result<Unit> = withContext(Dispatchers.IO) {
         val webhookUrl = settingsRepository.webhookUrl
             .firstOrNull()
             ?.getOrNull()
@@ -34,20 +34,21 @@ class SheetsRepository(private val settingsRepository: SettingsRepository) {
             return@withContext Result.failure(IOException("Webhook URL is not configured."))
         }
 
-        val body = JSONObject().apply {
-            put("timestamp", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(OffsetDateTime.now()))
-            put("weight", measurement.weightKg)
-            put("bf", measurement.bodyFatPercent)
-            put("bw", measurement.bodyWaterPercent)
-            put("bm", measurement.bodyMusclePercent)
-        }.toString().toRequestBody(json)
-
-        val request = Request.Builder()
-            .url(webhookUrl)
-            .post(body)
-            .build()
-
         runCatching {
+            val body = JSONObject().apply {
+                put("measurementId", measurementId)
+                put("timestamp", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(OffsetDateTime.now()))
+                put("weight", measurement.weightKg)
+                put("bf", measurement.bodyFatPercent)
+                put("bw", measurement.bodyWaterPercent)
+                put("bm", measurement.bodyMusclePercent)
+            }.toString().toRequestBody(json)
+
+            val request = Request.Builder()
+                .url(webhookUrl)
+                .post(body)
+                .build()
+
             val response = client.newCall(request).execute()
             val responseBody = response.body?.string() ?: ""
             if (!response.isSuccessful) {
