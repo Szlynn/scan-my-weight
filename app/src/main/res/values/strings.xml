@@ -5,8 +5,21 @@
     <string name="navigate_back">Vissza</string>
     <string name="navigate_to_settings">Beállítások</string>
 
-    <!-- Scan screen -->
-    <string name="scan_placeholder">Szkennelés (hamarosan)</string>
+    <!-- Scan screen – metrics -->
+    <string name="metric_weight">Súly</string>
+    <string name="metric_bf">BF</string>
+    <string name="metric_bw">BW</string>
+    <string name="metric_bm">BM</string>
+
+    <!-- Scan screen – states -->
+    <string name="scan_complete">Sikeres leolvasás! Feltöltés folyamatban…</string>
+    <string name="scan_upload_error">Feltöltés sikertelen</string>
+    <string name="scan_retry_upload_button">Újrapróbálás</string>
+    <string name="scan_reset_button">Új mérés</string>
+
+    <!-- Scan screen – permission -->
+    <string name="scan_camera_permission_rationale">Az alkalmazásnak kameraengedélyre van szüksége a mérleg leolvasásához.</string>
+    <string name="scan_grant_permission_button">Engedély megadása</string>
 
     <!-- Settings screen -->
     <string name="settings_title">Beállítások</string>
