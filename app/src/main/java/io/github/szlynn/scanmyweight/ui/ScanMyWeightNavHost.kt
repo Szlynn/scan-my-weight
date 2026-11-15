@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import io.github.szlynn.scanmyweight.data.SheetsRepository
 import io.github.szlynn.scanmyweight.data.SettingsRepository
 import io.github.szlynn.scanmyweight.ui.scan.ScanScreen
 import io.github.szlynn.scanmyweight.ui.settings.SettingsScreen
@@ -15,6 +16,7 @@ private const val ROUTE_SETTINGS = "settings"
 @Composable
 fun ScanMyWeightNavHost(
     settingsRepository: SettingsRepository,
+    sheetsRepository: SheetsRepository,
     modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
@@ -26,6 +28,7 @@ fun ScanMyWeightNavHost(
     ) {
         composable(ROUTE_SCAN) {
             ScanScreen(
+                sheetsRepository = sheetsRepository,
                 onNavigateToSettings = { navController.navigate(ROUTE_SETTINGS) },
             )
         }

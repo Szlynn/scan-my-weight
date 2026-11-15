@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import io.github.szlynn.scanmyweight.data.SheetsRepository
 import io.github.szlynn.scanmyweight.data.SettingsRepository
 import io.github.szlynn.scanmyweight.ui.ScanMyWeightNavHost
 import io.github.szlynn.scanmyweight.ui.theme.ScanMyWeightTheme
@@ -11,13 +12,17 @@ import io.github.szlynn.scanmyweight.ui.theme.ScanMyWeightTheme
 class MainActivity : ComponentActivity() {
 
     private val settingsRepository by lazy { SettingsRepository(applicationContext) }
+    private val sheetsRepository by lazy { SheetsRepository(settingsRepository) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ScanMyWeightTheme {
-                ScanMyWeightNavHost(settingsRepository = settingsRepository)
+                ScanMyWeightNavHost(
+                    settingsRepository = settingsRepository,
+                    sheetsRepository = sheetsRepository,
+                )
             }
         }
     }
