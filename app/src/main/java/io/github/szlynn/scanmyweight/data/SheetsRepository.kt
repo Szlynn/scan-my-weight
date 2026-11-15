@@ -21,10 +21,14 @@ class SheetsRepository(private val settingsRepository: SettingsRepository) {
      * Uploads a single weight measurement to Google Sheets via the Apps Script webhook.
      *
      * Reads the webhook URL from [SettingsRepository] at call time.
+     * [measurementId] identifies the locked measurement and is reused for retries.
      * Returns [Result.failure] with [IOException] if the URL is blank, on network failure,
      * or if the server returns an error status. Malformed URLs also return a failure.
      */
-    suspend fun upload(measurement: WeightMeasurement, measurementId: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun upload(
+        measurement: WeightMeasurement,
+        measurementId: String,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         val webhookUrl = settingsRepository.webhookUrl
             .firstOrNull()
             ?.getOrNull()
@@ -36,7 +40,7 @@ class SheetsRepository(private val settingsRepository: SettingsRepository) {
 
         runCatching {
             val body = JSONObject().apply {
-                put("measurementId", measurementId)
+                put("id", measurementId)
                 put("timestamp", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(OffsetDateTime.now()))
                 put("weight", measurement.weightKg)
                 put("bf", measurement.bodyFatPercent)

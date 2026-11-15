@@ -3,6 +3,7 @@ package io.github.szlynn.scanmyweight.ui.scan
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.github.szlynn.scanmyweight.data.WeightMeasurement
 import io.github.szlynn.scanmyweight.data.SheetsRepository
 import io.github.szlynn.scanmyweight.ocr.OcrParser
 import io.github.szlynn.scanmyweight.ocr.ScanStateMachine
@@ -20,6 +21,7 @@ class ScanViewModel(private val sheetsRepository: SheetsRepository) : ViewModel(
     private val _uiState = MutableStateFlow(ScanUiState())
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
 
+    // Stable for the locked measurement, including retries; cleared on reset.
     private var measurementId: String? = null
 
     // Callback invoked on the main thread by MlKitTextAnalyzer.
@@ -45,7 +47,7 @@ class ScanViewModel(private val sheetsRepository: SheetsRepository) : ViewModel(
         }
     }
 
-    private fun upload(measurement: io.github.szlynn.scanmyweight.data.WeightMeasurement) {
+    private fun upload(measurement: WeightMeasurement) {
         val id = measurementId ?: return
         viewModelScope.launch {
             sheetsRepository.upload(measurement, id).fold(

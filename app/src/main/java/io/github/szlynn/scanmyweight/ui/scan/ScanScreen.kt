@@ -214,7 +214,7 @@ private fun MetricIndicator(
     modifier: Modifier = Modifier,
 ) {
     val captureDescription = stringResource(
-        if (state == MetricCaptureState.LOCKED) R.string.metric_locked else R.string.metric_waiting,
+        if (state == MetricCaptureState.LOCKED) R.string.metric_state_locked else R.string.metric_state_waiting,
     )
     val color = if (state == MetricCaptureState.LOCKED) Color(0xFF4CAF50) else Color.Gray
     Column(
@@ -249,14 +249,17 @@ private fun NoCameraPermissionContent(
         modifier = modifier.padding(32.dp),
     ) {
         Text(
-            text = stringResource(R.string.scan_camera_permission_rationale),
+            text = stringResource(
+                if (permanentlyDenied) R.string.scan_camera_permission_denied
+                else R.string.scan_camera_permission_rationale,
+            ),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onRequestPermission) {
             Text(stringResource(
-                if (permanentlyDenied) R.string.scan_open_settings_button
+                if (permanentlyDenied) R.string.scan_open_app_settings_button
                 else R.string.scan_grant_permission_button,
             ))
         }
