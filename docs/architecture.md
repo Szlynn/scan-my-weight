@@ -57,11 +57,11 @@ Sends a `WeightMeasurement` to the Google Apps Script webhook via OkHttp. The we
 ### `data/SettingsRepository`
 Persists user settings in `DataStore<Preferences>`. Currently stores the webhook URL. Emits `Flow<Result<String>>` to distinguish a read failure from a successfully loaded empty value.
 
-### `ui/scan/ScanViewModel` *(#1c)*
-Coordinates the camera pipeline: feeds `OcrParser` output into `ScanStateMachine`, exposes `ScanUiState` via `StateFlow`, triggers haptic feedback on completion, and calls `SheetsRepository.upload()`.
+### `ui/scan/ScanViewModel`
+Coordinates the camera pipeline: feeds `OcrParser` output into `ScanStateMachine`, exposes `ScanUiState` via `StateFlow`, triggers upload on completion with a stable per-measurement UUID (reused on retry), and exposes reset and retry actions. Owns and closes the `MlKitTextAnalyzer` in `onCleared`.
 
-### `ui/scan/ScanScreen` *(#1b, #1c)*
-Composable that hosts the CameraX preview, ROI overlay bounding box, and four metric status indicators (grey → green as each metric locks in).
+### `ui/scan/ScanScreen`
+Composable that hosts the CameraX preview, ROI overlay bounding box, four metric status indicators (grey → green as each metric locks in), camera permission flow with permanent-denial handling, and scan result / upload error overlays.
 
 ### `ui/settings/SettingsScreen` + `SettingsViewModel`
 Settings screen for entering and persisting the webhook URL. Handles DataStore load errors with retry and save errors with snackbar feedback.
@@ -100,6 +100,7 @@ Deployment: Google Apps Script Web App (`scripts/sheets_webhook.gs`), deployed a
 POST payload:
 ```json
 {
+  "id": "550e8400-e29b-41d4-a716-446655440000",
   "timestamp": "2026-11-14T19:00:00+01:00",
   "weight": 60.6,
   "bf": 35.6,
@@ -108,15 +109,10 @@ POST payload:
 }
 ```
 
-The script appends a row to a sheet named `Log`, creating it with a header row on first use. See `docs/google_sheets_setup.md` for deployment instructions.
+The `id` field is used for idempotency — if a row with the same id already exists the script returns `{ "status": "ok" }` without appending a duplicate. The script appends a row to a sheet named `Log`, creating it with a header row on first use. See `docs/google_sheets_setup.md` for deployment instructions.
 
 ---
 
-## Deferred / in progress
+## Deferred / known issues
 
-| Item | Issue |
-|------|-------|
-| CameraX preview + ROI overlay + ML Kit wiring | #1b |
-| ScanViewModel + upload flow + full ScanScreen UI | #1c |
-| Unit tests for ViewModel (Turbine + MockK) | #3 |
-| GitHub Actions CI | #4 |
+See [`docs/todos.md`](todos.md) for outstanding polish items and known issues.
