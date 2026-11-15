@@ -8,6 +8,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -15,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import java.io.Closeable
 
 /**
  * Composable that hosts a CameraX [PreviewView] bound to the back camera.
@@ -25,6 +27,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
  * - [imageAnalyzer] changes update the analysis use case without triggering a camera rebind.
  *
  * @param imageAnalyzer Optional [ImageAnalysis.Analyzer]. Pass null to show preview only.
+ *                      This preview owns the supplied analyzer: if it is [Closeable], it is
+ *                      closed on replacement or removal. Do not share it between previews.
  * @param onError       Called on the main thread if the camera provider fails to initialise.
  */
 @Composable
@@ -35,18 +39,33 @@ fun CameraPreview(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val previewView = remember { PreviewView(context) }
+    val previewView = remember(context) { PreviewView(context) }
 
-    // Keep a stable reference to the latest analyzer and error handler without
-    // restarting the DisposableEffect when they change.
-    val currentAnalyzer by rememberUpdatedState(imageAnalyzer)
+    val executor = remember { ContextCompat.getMainExecutor(context.applicationContext) }
+    val imageAnalysis = remember {
+        ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+    }
     val currentOnError by rememberUpdatedState(onError)
 
-    DisposableEffect(lifecycleOwner) {
-        val executor = ContextCompat.getMainExecutor(context)
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+    DisposableEffect(imageAnalysis, imageAnalyzer, executor) {
+        if (imageAnalyzer != null) {
+            imageAnalysis.setAnalyzer(executor, imageAnalyzer)
+        }
+        onDispose {
+            imageAnalysis.clearAnalyzer()
+            (imageAnalyzer as? Closeable)?.close()
+        }
+    }
 
-        // Guard against disposal before the future completes.
+    DisposableEffect(context, lifecycleOwner, previewView, imageAnalysis) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        val preview = Preview.Builder().build().also {
+            it.surfaceProvider = previewView.surfaceProvider
+        }
+        var boundProvider: ProcessCameraProvider? = null
+        // The listener may run after this effect has been disposed.
         var disposed = false
 
         cameraProviderFuture.addListener(
@@ -57,25 +76,13 @@ fun CameraPreview(
                     .onFailure { currentOnError(it) }
                     .getOrNull() ?: return@addListener
 
-                val preview = Preview.Builder().build().also { p ->
-                    p.surfaceProvider = previewView.surfaceProvider
-                }
-
-                val imageAnalysis = currentAnalyzer?.let { analyzer ->
-                    ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also { it.setAnalyzer(executor, analyzer) }
-                }
-
-                val useCases = listOfNotNull(preview, imageAnalysis).toTypedArray()
-
+                boundProvider = cameraProvider
                 runCatching {
-                    cameraProvider.unbindAll()
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         CameraSelector.DEFAULT_BACK_CAMERA,
-                        *useCases,
+                        preview,
+                        imageAnalysis,
                     )
                 }.onFailure { currentOnError(it) }
             },
@@ -85,14 +92,15 @@ fun CameraPreview(
         onDispose {
             disposed = true
             runCatching {
-                val cameraProvider = cameraProviderFuture.get()
-                cameraProvider.unbindAll()
+                boundProvider?.unbind(preview, imageAnalysis)
             }
         }
     }
 
-    AndroidView(
-        factory = { previewView },
-        modifier = modifier,
-    )
+    key(previewView) {
+        AndroidView(
+            factory = { previewView },
+            modifier = modifier,
+        )
+    }
 }
