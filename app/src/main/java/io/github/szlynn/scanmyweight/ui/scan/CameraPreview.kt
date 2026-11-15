@@ -23,13 +23,14 @@ import java.io.Closeable
  *
  * Camera binding is scoped to the composable's lifetime:
  * - Binding is established once per [lifecycleOwner] change inside a [DisposableEffect].
- * - Use cases are unbound when the composable leaves composition.
- * - [imageAnalyzer] changes update the analysis use case without triggering a camera rebind.
+ * - Only the acquired provider and owned use cases are unbound during disposal;
+ *   disposal never waits on [ProcessCameraProvider.getInstance].
+ * - [imageAnalyzer] changes update the [ImageAnalysis] use case without camera rebinding.
  *
  * @param imageAnalyzer Optional [ImageAnalysis.Analyzer]. Pass null to show preview only.
  *                      This preview owns the supplied analyzer: if it is [Closeable], it is
  *                      closed on replacement or removal. Do not share it between previews.
- * @param onError       Called on the main thread if the camera provider fails to initialise.
+ * @param onError       Called on the main thread if camera provider initialisation fails.
  */
 @Composable
 fun CameraPreview(
@@ -76,7 +77,6 @@ fun CameraPreview(
                     .onFailure { currentOnError(it) }
                     .getOrNull() ?: return@addListener
 
-                boundProvider = cameraProvider
                 runCatching {
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
@@ -84,7 +84,12 @@ fun CameraPreview(
                         preview,
                         imageAnalysis,
                     )
-                }.onFailure { currentOnError(it) }
+                }.onFailure {
+                    currentOnError(it)
+                    return@addListener
+                }
+
+                boundProvider = cameraProvider
             },
             executor,
         )
